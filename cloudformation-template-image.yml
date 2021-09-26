@@ -1,0 +1,324 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Ubuntu 18.04 LTS EC2 instance for Django containerization. Requires the creation of an IAM role named django-ec2 with AmazonEC2ContainerRegistryPowerUser permission policy assignment.
+
+Parameters:
+
+  DjangoSecretKey:
+    NoEcho: true
+    Description: The secret key used for Django app.
+    Type: String
+    MinLength: 8
+    MaxLength: 50
+    Default: change_me
+    ConstraintDescription: must be between 8 and 50 characters in length
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+  DBUsername:
+    # this will map to the SQL_USER var
+    Description: The admin username of the database
+    Type: String
+    MinLength: 3
+    Default: webapp
+    ConstraintDescription: must be greater than 3 characters
+  DBPassword:
+    NoEcho: true
+    Description: The database admin account password
+    Type: String
+    MinLength: 12
+    Default: change_me_already!
+    ConstraintDescription: minimum length of 12 characters
+    # this will map to the SQL_PASSWORD
+  DBHost:
+    # this will NOT map to the SQL_HOST var ... in EC2 that need to be the RDS instance Endpoint address unless there is public DNS configured
+    Description: The hostname of the database. Django will connect using the RDS instance endpoint address and NOT this. Assigns a value to the AWS Name tag.
+    Type: String
+    MinLength: 2
+    Default: dbhost
+    ConstraintDescription: must be greater than 3 characters
+  DBPort:
+    Type: Number
+    # this will map to the SQL_PORT var (default 5432 should be changed)
+    Description: The TCP port number for the Application
+    MinValue: 1024
+    MaxValue: 65535
+    ConstraintDescription: Must be between 1024 and 65535. Avoid commonly reserved ports like 80 443 etc
+    Default: 5482
+
+Mappings:
+  AWSRegionAMIEC2:
+    us-east-1:
+      Ubuntu18: ami-0ba8868be888e4e18
+
+Resources:
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT20M
+    
+    Properties:
+      AllocatedStorage: 20
+      DBInstanceClass: db.t4g.micro
+      DBName: hello_django_dev
+      Engine: postgres
+      EngineVersion: 13.1
+      MasterUsername:
+        Ref: DBUsername
+      MasterUserPassword:
+        Ref: DBPassword
+      DBSecurityGroups:
+        - Ref: DBSecurityGroup
+      Port:
+        Ref: DBPort
+      Tags:
+        - Key: "Name"
+          Value: !Sub ${DBHost}
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT20M
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          full_install:
+          - install_and_enable_cfn_hup
+          - start_docker
+          - docker_env_prep
+          - docker_env_config
+          - docker_build
+        install_and_enable_cfn_hup:
+          files:
+            "/etc/cfn/cfn-hup.conf":
+              content:
+                Fn::Join:
+                - ''
+                - - "[main]\n"
+                  - stack=
+                  - Ref: AWS::StackId
+                  - "\n"
+                  - region=
+                  - Ref: AWS::Region
+                  - "\n"
+              mode: '000400'
+              owner: root
+              group: root
+            "/etc/cfn/hooks.d/cfn-auto-reloader.conf":
+              content:
+                Fn::Join:
+                - ''
+                - - "[cfn-auto-reloader-hook]\n"
+                  - 'triggers=post.update
+
+                    '
+                  - 'path=Resources.EC2Instance.Metadata.AWS::CloudFormation::Init
+
+                    '
+                  - 'action=/opt/aws/bin/cfn-init -v '
+                  - "         --stack "
+                  - Ref: AWS::StackName
+                  - "         --resource EC2Instance "
+                  - "         --configsets full_install "
+                  - "         --region "
+                  - Ref: AWS::Region
+                  - "\n"
+                  - 'runas=root
+
+                    '
+            "/lib/systemd/system/cfn-hup.service":
+              content:
+                Fn::Join:
+                - ''
+                - - "[Unit]\n"
+                  - "Description=cfn-hup daemon\n\n"
+                  - "[Service]\n"
+                  - 'Type=simple
+
+                    '
+                  - 'ExecStart=/opt/aws/bin/cfn-hup
+
+                    '
+                  - "Restart=always\n\n"
+                  - "[Install]\n"
+                  - WantedBy=multi-user.target
+          commands:
+            01enable_cfn_hup:
+              command: systemctl enable cfn-hup.service
+            02start_cfn_hup:
+              command: systemctl start cfn-hup.service
+        
+        start_docker:
+          packages:
+            apt:
+              python3-pip: []
+              curl: []
+              software-properties-common: []
+          commands:
+            docker_service_start:
+              command: sudo systemctl start docker
+            docker_service_enable:
+              command: sudo systemctl enable docker
+
+        docker_env_prep:
+          commands:
+            rm_compose_yml:
+              command: rm -f /tmp/syntax/docker-compose.yml
+              cwd: /var/tmp/syntax
+
+        docker_env_config:
+          files:
+            "/var/tmp/syntax/docker-compose.yml":
+              content:
+                Fn::Join:
+                - ''
+                - - "version: '3.8'\n\nservices:\n"
+                  - "  web:\n"
+                  - "    build: ./app\n"
+                  - "    command: python manage.py runserver 0.0.0.0:8000\n"
+                  - "    volumes:\n"
+                  - "      - ./app/:/usr/src/app/\n"
+                  - "      - static_volume:/home/app/web/staticfiles\n"
+                  - "    ports:\n"
+                  - "      - 8000:8000\n"
+                  - "    env_file:\n"
+                  - "      - ./.env.dev\n"
+                  - "    depends_on:\n"
+                  - "      - db\n"
+                  - "  db:\n"
+                  - "    image: postgres:13.0-alpine\n"
+                  - "    volumes:\n"
+                  - "      - postgres_data:/var/lib/postgresql/data/\n"
+                  - "    environment:\n"
+                  - "      - POSTGRES_USER="
+                  - Ref: DBUsername
+                  - "\n      - POSTGRES_PASSWORD="
+                  - Ref: DBPassword
+                  - "\n      - POSTGRES_DB=hello_django_dev\n"
+                  - "volumes:\n"
+                  - "  postgres_data:\n"
+                  - "  static_volume:\n"
+              mode: '000644'
+              owner: ubuntu
+              group: ubuntu
+              encoding: plain
+            "/var/tmp/syntax/.env.dev":
+              content:
+                Fn::Join:
+                - ''
+                - - "DEBUG=1\n"              
+                  - "SECRET_KEY="
+                  - Ref: DjangoSecretKey
+                  #- "DJANGO_ALLOWED_HOSTS=[*]"
+                  - "SQL_ENGINE=django.db.backends.postgresql\n"
+                  - "SQL_DATABASE=hello_django_dev\n"
+                  - "SQL_USER="
+                  - Ref: DBUsername
+                  - "\nSQL_PASSWORD="
+                  - Ref: DBPassword
+                  - "\nSQL_HOST="
+                  - Fn::GetAtt: 
+                      - RDSInstance
+                      - Endpoint.Address 
+                  - "\nSQL_PORT="
+                  - Ref: DBPort
+                  - "\nDATABASE=postgres\n"
+              mode: '000644'
+              owner: ubuntu
+              group: ubuntu
+              encoding: plain
+
+
+        docker_build:
+          commands:
+            build_it:
+              command: docker-compose -f docker-compose.prod.yml up -d --build
+              cwd: /var/tmp/syntax
+            migrate_it:
+              command: docker-compose exec web python manage.py migrate --noinput
+              cwd: /var/tmp/syntax
+
+    Properties:
+      InstanceType: t2.micro
+      SecurityGroups:
+      - Ref: InstanceSecurityGroup
+      IamInstanceProfile: django-ec2
+      KeyName:
+        Ref: KeyName
+      ImageId:
+        Fn::FindInMap:
+        - AWSRegionAMIEC2
+        - Ref: AWS::Region
+        - Ubuntu18
+      Tags:
+        - Key: "Name"
+          Value: "syn-app01"
+      UserData:
+        Fn::Base64:
+          Fn::Join:
+          - ''
+          - - "#!/bin/bash -xe\n"
+            - 'apt-get update -y
+
+              '
+            - 'apt-get upgrade -y
+
+              '
+            - 'apt-get install -y python3-setuptools
+
+              '
+            - 'mkdir -p /opt/aws/bin
+
+              '
+            - 'wget https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
+
+              '
+            - 'python3 -m easy_install --script-dir /opt/aws/bin aws-cfn-bootstrap-py3-latest.tar.gz
+
+              '
+            - "/opt/aws/bin/cfn-init -v "
+            - "         --stack "
+            - Ref: AWS::StackName
+            - "         --resource EC2Instance "
+            - "         --configsets full_install "
+            - "         --region "
+            - Ref: AWS::Region
+            - "\n"
+            - "/opt/aws/bin/cfn-signal -e $? "
+            - "         --stack "
+            - Ref: AWS::StackName
+            - "         --resource EC2Instance "
+            - "         --region "
+            - Ref: AWS::Region
+            - "\n"
+
+  DBSecurityGroup:
+    Type: AWS::RDS::DBSecurityGroup
+    Properties:
+      DBSecurityGroupIngress:
+        EC2SecurityGroupName:
+          Ref: InstanceSecurityGroup
+      GroupDescription: Frontend access
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 8000
+        ToPort: 8000
+        CidrIp: 0.0.0.0/0
+      GroupDescription: Enable SSH and web access
