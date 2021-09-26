@@ -13,3 +13,10 @@ Provisioning relies on the custom AMI ami-0ba8868be888e4e18. This AMI is set to 
 
 Select region us-east-1.
 
+Requires the creation of an IAM role named django-ec2 with AmazonEC2ContainerRegistryPowerUser permission policy assignment. This is a one-time account-level configuration that does not need to be repeated. See https://testdriven.io/blog/django-docker-https-aws/#iam-role for additional details.
+
+
+#### Notes
+
+The superuser has not been created. This can be accomplished by using -it exec to run the createsuperuser script manually from within the web container after provisioning.
+
