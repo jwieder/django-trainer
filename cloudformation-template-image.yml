@@ -237,8 +237,14 @@ Resources:
 
         docker_env_config2:
           commands:
+            ip_script_dl:
+              command: wget https://raw.githubusercontent.com/jwieder/django-trainer/main/get_my_ip.sh
+              cwd: /var/tmp/syntax
+            ip_mod:
+              command: chmod +x get-my-ip.sh
+              cwd: /var/tmp/syntax
             ip_writer:
-              command: /bin/bash what-is-my-ip.sh >> .env.dev
+              command: /bin/bash get-my-ip.sh >> .env.dev
               cwd: /var/tmp/syntax
 
         docker_build:
