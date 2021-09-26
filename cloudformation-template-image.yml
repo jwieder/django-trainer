@@ -64,6 +64,7 @@ Resources:
       DBInstanceClass: db.t4g.micro
       DBName: hello_django_dev
       DeleteAutomatedBackups: true
+      BackupRetentionPeriod: 0
       Engine: postgres
       EngineVersion: 13.1
       StorageType: gp2
@@ -92,6 +93,7 @@ Resources:
           - start_docker
           - docker_env_prep
           - docker_env_config
+          - docker_env_config2
           - docker_build
           - docker_migrate
         install_and_enable_cfn_hup:
@@ -157,7 +159,6 @@ Resources:
         start_docker:
           packages:
             apt:
-              python3-pip: []
               curl: []
               software-properties-common: []
           commands:
@@ -181,7 +182,7 @@ Resources:
                 - - "version: '3.8'\n\nservices:\n"
                   - "  web:\n"
                   - "    build: ./app\n"
-                  - "    command: python manage.py runserver 0.0.0.0:8000\n"
+                  - "    command: python3 manage.py runserver 0.0.0.0:8000\n"
                   - "    volumes:\n"
                   - "      - ./app/:/usr/src/app/\n"
                   - "      - static_volume:/home/app/web/staticfiles\n"
@@ -215,8 +216,8 @@ Resources:
                 - - "DEBUG=1\n"              
                   - "SECRET_KEY="
                   - Ref: DjangoSecretKey
-                  #- "DJANGO_ALLOWED_HOSTS=[*]"
-                  - "\nSQL_ENGINE=django.db.backends.postgresql\n"
+                  #- "\nDJANGO_ALLOWED_HOSTS=[*]\n"
+                  - "SQL_ENGINE=django.db.backends.postgresql\n"
                   - "SQL_DATABASE=hello_django_dev\n"
                   - "SQL_USER="
                   - Ref: DBUsername
@@ -233,6 +234,12 @@ Resources:
               owner: ubuntu
               group: ubuntu
               encoding: plain
+
+        docker_env_config2:
+          commands:
+            ip_writer:
+              command: /bin/bash what-is-my-ip.sh >> .env.dev
+              cwd: /var/tmp/syntax
 
         docker_build:
           commands:
@@ -271,7 +278,7 @@ Resources:
             - 'apt-get upgrade -y
 
               '
-            - 'apt-get install -y python3-setuptools python3.8 python3.8-dev
+            - 'apt-get install -y python3-setuptools python3-pip python3.8 python3.8-dev
 
               '
             - 'mkdir -p /opt/aws/bin
