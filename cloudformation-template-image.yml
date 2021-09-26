@@ -241,10 +241,10 @@ Resources:
               command: wget https://raw.githubusercontent.com/jwieder/django-trainer/main/get_my_ip.sh
               cwd: /var/tmp/syntax
             ip_mod:
-              command: chmod +x get-my-ip.sh
+              command: chmod +x get_my_ip.sh
               cwd: /var/tmp/syntax
             ip_writer:
-              command: /bin/bash get-my-ip.sh >> .env.dev
+              command: /bin/bash get_my_ip.sh >> .env.dev
               cwd: /var/tmp/syntax
 
         docker_build:
