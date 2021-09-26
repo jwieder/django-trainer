@@ -59,10 +59,14 @@ Resources:
     
     Properties:
       AllocatedStorage: 20
+      AllowMajorVersionUpgrade: 0
+      AutoMinorVersionUpgrade: 0
       DBInstanceClass: db.t4g.micro
       DBName: hello_django_dev
+      DeleteAutomatedBackups: 1
       Engine: postgres
       EngineVersion: 13.1
+      StorageType: gp2
       MasterUsername:
         Ref: DBUsername
       MasterUserPassword:
@@ -89,6 +93,7 @@ Resources:
           - docker_env_prep
           - docker_env_config
           - docker_build
+          - docker_migrate
         install_and_enable_cfn_hup:
           files:
             "/etc/cfn/cfn-hup.conf":
@@ -229,14 +234,15 @@ Resources:
               group: ubuntu
               encoding: plain
 
-
         docker_build:
           commands:
             build_it:
               command: docker-compose -f docker-compose.prod.yml up -d --build
               cwd: /var/tmp/syntax
+
+        docker_migrate:
             migrate_it:
-              command: docker-compose exec web python manage.py migrate --noinput
+              command: docker-compose exec -T web python manage.py migrate --noinput
               cwd: /var/tmp/syntax
 
     Properties:
