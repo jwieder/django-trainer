@@ -59,11 +59,11 @@ Resources:
     
     Properties:
       AllocatedStorage: 20
-      AllowMajorVersionUpgrade: 0
-      AutoMinorVersionUpgrade: 0
+      AllowMajorVersionUpgrade: false
+      AutoMinorVersionUpgrade: false
       DBInstanceClass: db.t4g.micro
       DBName: hello_django_dev
-      DeleteAutomatedBackups: 1
+      DeleteAutomatedBackups: true
       Engine: postgres
       EngineVersion: 13.1
       StorageType: gp2
