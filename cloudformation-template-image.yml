@@ -201,7 +201,7 @@ Resources:
                   - "\n      - POSTGRES_PASSWORD="
                   - Ref: DBPassword
                   - "\n      - POSTGRES_DB=hello_django_dev\n"
-                  - "volumes:\n"
+                  - "\nvolumes:\n"
                   - "  postgres_data:\n"
                   - "  static_volume:\n"
               mode: '000644'
@@ -216,7 +216,7 @@ Resources:
                   - "SECRET_KEY="
                   - Ref: DjangoSecretKey
                   #- "DJANGO_ALLOWED_HOSTS=[*]"
-                  - "SQL_ENGINE=django.db.backends.postgresql\n"
+                  - "\nSQL_ENGINE=django.db.backends.postgresql\n"
                   - "SQL_DATABASE=hello_django_dev\n"
                   - "SQL_USER="
                   - Ref: DBUsername
@@ -237,7 +237,7 @@ Resources:
         docker_build:
           commands:
             build_it:
-              command: docker-compose -f docker-compose.prod.yml up -d --build
+              command: docker-compose up -d --build
               cwd: /var/tmp/syntax
 
         docker_migrate:
@@ -271,7 +271,7 @@ Resources:
             - 'apt-get upgrade -y
 
               '
-            - 'apt-get install -y python3-setuptools
+            - 'apt-get install -y python3-setuptools python3.8 python3.8-dev
 
               '
             - 'mkdir -p /opt/aws/bin
