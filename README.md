@@ -7,7 +7,7 @@ The provisioning scheme is based on the walkthrough here: https://testdriven.io/
 
 #### Prerequisites
 
-Provisioning relies on the custom AMI ami-0ba8868be888e4e18. This AMI is set to public and should be accessed seemlessly.
+Provisioning relies on the custom AMI ami-0ba8868be888e4e18. This AMI is set to public and can be accessed seemlessly.
 
 Select region us-east-1 when deploying to Cloudformation.
 
