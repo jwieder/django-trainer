@@ -27,7 +27,9 @@ On the Configure stack options, leave the default options (it is okay to add Tag
 
 Double check your parameter values and the click Create stack.
 
-Be patient with the provisioning process - the template assigns small instances and there are some slow deployment options involved in the template and docker configuration (for example, to accommodate Ubuntu 18.04 it was neccessary to manually provision aws-cfn-bootstrap-py3 from userdata). The full deployment can take 10 minutes (!).
+Be patient with the provisioning process - the template assigns small instances and there are some slow deployment options involved in the template and docker configuration (for example, to accommodate Ubuntu 18.04 it was neccessary to manually provision aws-cfn-bootstrap-py3 from userdata). The full deployment can take 10 minutes (!). To easily monitor the deployment, click on the Events tab from within the new stack formation window. When finished, there should be a final CREATE_COMPLETE message.
+
+To verify application availability, navigate to AWS Services -> EC2 -> Instances and select the new instance from the Cloudformation Deploy (it should be named syn-app01). Copy the Public IPv4 address and use it to navigate to a Django login page. For example, if the IP was 192.168.0.1, navigate to: http://192.168.0.1:8000 to see the debug screen and http://192.168.0.1:8000/admin to see the admin login. 
 
 #### Notes
 
