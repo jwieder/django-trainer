@@ -238,8 +238,7 @@ Resources:
         docker_env_config2:
           commands:
             ip_script_dl:
-              command: wget https://raw.githubusercontent.com/jwieder/django-trainer/main/get_my_ip.sh
-              cwd: /var/tmp/syntax
+              command: wget https://raw.githubusercontent.com/jwieder/django-trainer/main/get_my_ip.sh -P /var/tmp/syntax/
             ip_mod:
               command: chmod +x get_my_ip.sh
               cwd: /var/tmp/syntax
@@ -291,6 +290,12 @@ Resources:
 
               '
             - 'wget https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
+
+              '
+            - 'wget https://raw.githubusercontent.com/jwieder/django-trainer/main/get_my_ip.sh -O /var/tmp/syntax/get_my_ip.sh
+              
+              '
+            - 'chmod +x /var/tmp/syntax/get_my_ip.sh
 
               '
             - 'python3 -m easy_install --script-dir /opt/aws/bin aws-cfn-bootstrap-py3-latest.tar.gz
