@@ -11,7 +11,7 @@ Provisioning relies on the custom AMI ami-0ba8868be888e4e18. This AMI is set to 
 
 Select region us-east-1 when deploying to Cloudformation.
 
-Requires the creation of an IAM role named django-ec2 with AmazonEC2ContainerRegistryPowerUser permission policy assignment. This is a one-time account-level and Global setting that does . See https://testdriven.io/blog/django-docker-https-aws/#iam-role for additional details.
+Requires the creation of an IAM role named django-ec2 with AmazonEC2ContainerRegistryPowerUser permission policy assignment. This is a one-time account-level and Global setting that does not require recreation each time the CloudFormation is provisioned. See https://testdriven.io/blog/django-docker-https-aws/#iam-role for additional details.
 
 #### Cloudformation Deployment Walkthrough
 
